@@ -78,7 +78,7 @@ export default function Layout() {
         style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
       >
         <img 
-          src="/logo.png" 
+          src={`${import.meta.env.BASE_URL}logo.png`} 
           alt="華師勞權 Logo" 
           className="absolute top-4 left-4 w-12 h-12 rounded-xl border-2 border-paper/10 z-20 md:top-8 md:left-8 md:w-20 md:h-20 hidden sm:block shadow-lg"
           referrerPolicy="no-referrer"
