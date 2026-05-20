@@ -16,7 +16,7 @@ const app = initializeApp(firebaseConfig);
 
 export const db = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true,
-}, "mtc_db");
+});
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
