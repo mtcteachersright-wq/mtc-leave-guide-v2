@@ -46,6 +46,45 @@ export default function DiscussionBoard() {
   const [showNickModal, setShowNickModal] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'info' | 'error' } | null>(null);
   const [isInIframe, setIsInIframe] = useState(false);
+  const [logins, setLogins] = useState<any[]>([]);
+  const [showAdminLog, setShowAdminLog] = useState(false);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [loginsError, setLoginsError] = useState<string | null>(null);
+
+  const groupedLogins = React.useMemo(() => {
+    const groups: { [key: string]: { email: string; displayName: string; times: Timestamp[] } } = {};
+    logins.forEach(log => {
+      if (!log.email) return;
+      if (!groups[log.email]) {
+        groups[log.email] = {
+          email: log.email,
+          displayName: log.displayName || '匿名',
+          times: []
+        };
+      }
+      if (log.loginAt) {
+        groups[log.email].times.push(log.loginAt);
+      }
+    });
+    return Object.values(groups);
+  }, [logins]);
+
+  useEffect(() => {
+    if (user && user.email === ADMIN_EMAIL) {
+      const q = query(collection(db, 'logins'), orderBy('loginAt', 'desc'));
+      const unsubLogins = onSnapshot(q, (snap) => {
+        setLogins(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setLoginsError(null);
+      }, (err) => {
+        console.error("Firestore logins loading error:", err);
+        setLoginsError(err.message || String(err));
+      });
+      return () => unsubLogins();
+    } else {
+      setLogins([]);
+      setLoginsError(null);
+    }
+  }, [user]);
 
   useEffect(() => {
     setIsInIframe(window.self !== window.top);
@@ -124,6 +163,16 @@ export default function DiscussionBoard() {
       if (result && result.user) {
         setUser(result.user);
         showToast('登入成功');
+        try {
+          await addDoc(collection(db, 'logins'), {
+            uid: result.user.uid,
+            email: result.user.email,
+            displayName: result.user.displayName || '匿名',
+            loginAt: serverTimestamp()
+          });
+        } catch (logErr) {
+          console.warn("Could not save login log:", logErr);
+        }
       }
     } catch (e: any) {
       console.error("Popup login error:", e);
@@ -262,6 +311,86 @@ export default function DiscussionBoard() {
               登出
             </button>
           </div>
+
+          {/* Admin Visitor Log */}
+          {user.email === ADMIN_EMAIL && (
+            <div className="bg-white border rounded-xl border-ink/10 overflow-hidden shadow-sm">
+              <button 
+                onClick={() => setShowAdminLog(!showAdminLog)}
+                className="w-full flex items-center justify-between p-6 bg-ink text-paper hover:bg-black transition-colors"
+                type="button"
+              >
+                <span className="font-serif text-base font-black flex items-center gap-3">
+                  <UserIcon size={18} />
+                  <span>👤 來訪紀錄（僅管理者可見）</span>
+                </span>
+                <ChevronRight size={18} className={cn("transition-transform", showAdminLog && "rotate-90")} />
+              </button>
+              {showAdminLog && (
+                <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto divide-y divide-ink/5">
+                  {loginsError ? (
+                    <div className="text-xs space-y-3 bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl leading-relaxed">
+                      <p className="font-bold flex items-center gap-1.5">
+                        <span>⚠️ 讀取來訪紀錄失敗 (權限與安全規則不足)</span>
+                      </p>
+                      <p>
+                        本網頁目前正連結至您的獨立 Firebase 專案（<code>mtctechers-rights</code>）。由於任何在此編輯的安全規則都無法自動同步至您的私有資料庫，因此會產生權限不足錯誤。
+                      </p>
+                      <p className="font-semibold text-red-800">
+                        解決方法：
+                      </p>
+                      <ol className="list-decimal pl-5 space-y-1">
+                        <li>請至您的 <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-bold text-red-900 hover:text-red-950">Firebase 控制台</a></li>
+                        <li>進入 <strong>Firestore Database</strong> &gt; <strong>Rules (規則)</strong> 頁籤</li>
+                        <li>在資料庫規則中加入以下程式碼：</li>
+                      </ol>
+                      <pre className="bg-white p-3 rounded-lg font-mono text-[10px] overflow-x-auto text-red-800 select-all border border-red-200">
+{`match /logins/{loginId} {
+  allow create: if request.auth != null;
+  allow read: if request.auth != null && request.auth.token.email == 'mtc.teachers.right@gmail.com';
+}`}
+                      </pre>
+                      <p className="text-[10px] text-red-600/80">
+                        錯誤詳細資訊：{loginsError}
+                      </p>
+                    </div>
+                  ) : groupedLogins.length === 0 ? (
+                    <p className="text-xs text-ink/40 text-center py-8 uppercase tracking-widest font-black">目前尚無來訪紀錄</p>
+                  ) : (
+                    groupedLogins.map((group) => (
+                      <div key={group.email} className="pt-4 first:pt-0 pb-4 last:pb-0">
+                        <button
+                          onClick={() => setExpandedUser(expandedUser === group.email ? null : group.email)}
+                          className="w-full flex items-center justify-between text-left hover:bg-ink/5 p-3 rounded-lg transition-colors"
+                          type="button"
+                        >
+                          <div className="min-w-0 pr-4">
+                            <span className="text-sm font-bold text-ink block truncate">{group.email}</span>
+                            <span className="text-xs text-ink/50 leading-relaxed font-light block">{group.displayName}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] bg-ink/5 text-ink border border-ink/10 px-2 py-0.5 rounded-full font-bold">
+                              {group.times.length} 次
+                            </span>
+                            <ChevronRight size={14} className={cn("transition-transform text-ink/30", expandedUser === group.email && "rotate-90")} />
+                          </div>
+                        </button>
+                        {expandedUser === group.email && (
+                          <div className="ml-4 mt-2 pl-4 border-l-2 border-ink/10 space-y-2">
+                            {group.times.map((t, tIdx) => (
+                              <div key={tIdx} className="text-[10px] text-ink/40 font-bold uppercase tracking-widest">
+                                🕐 {formatTime(t)}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Post Compose */}
           <div className="space-y-6">
