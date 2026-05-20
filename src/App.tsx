@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import LeaveGuide from './components/LeaveGuide';
 import LeaveCalculator from './components/LeaveCalculator';
@@ -10,7 +10,7 @@ import Contact from './components/Contact';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<LeaveGuide />} />
@@ -21,6 +21,6 @@ export default function App() {
           <Route path="discussion" element={<DiscussionBoard />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
