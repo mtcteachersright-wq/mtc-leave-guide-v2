@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth, googleProvider, ADMIN_EMAIL } from '../lib/firebase';
+import { db, auth, googleProvider, ADMIN_EMAIL, OperationType, handleFirestoreError } from '../lib/firebase';
 import { 
   collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, 
   serverTimestamp, onSnapshot, Timestamp, getDoc, setDoc
@@ -81,6 +81,9 @@ export default function DiscussionBoard() {
               setNick('');
               setShowNickModal(true);
             }
+            if (e.code === 'permission-denied' || e.message?.includes('permission')) {
+              handleFirestoreError(e, OperationType.GET, `users/${currentUser.uid}`);
+            }
           }
         }
       }
@@ -88,7 +91,9 @@ export default function DiscussionBoard() {
 
     const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
     const unsubPosts = onSnapshot(q, (snap) => {
-      const fetchedPosts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+      const fetchedPosts = snap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Post))
+        .filter(p => !p.deleted);
       setPosts(fetchedPosts);
       setLoading(false);
     }, (err) => {
@@ -97,6 +102,9 @@ export default function DiscussionBoard() {
       // but maybe we should show an error to help them debug.
       showToast('備註：無法讀取留言，請確保資料庫權限已開放', 'error');
       setLoading(false);
+      if (err.code === 'permission-denied' || err.message?.includes('permission')) {
+        handleFirestoreError(err, OperationType.LIST, 'posts');
+      }
     });
 
     return () => {
@@ -152,6 +160,9 @@ export default function DiscussionBoard() {
         localStorage.setItem(`nick_${user.uid}`, nick);
         setShowNickModal(false);
         showToast('暱稱已暫存於本機 (離線模式)', 'info');
+        if (e.code === 'permission-denied' || e.message?.includes('permission')) {
+          handleFirestoreError(e, OperationType.WRITE, `users/${user.uid}`);
+        }
       }
     }
   };
@@ -174,6 +185,9 @@ export default function DiscussionBoard() {
       showToast('佈告已發佈');
     } catch (e: any) {
       showToast('發佈失敗: ' + e.message, 'error');
+      if (e.code === 'permission-denied' || e.message?.includes('permission')) {
+        handleFirestoreError(e, OperationType.CREATE, 'posts');
+      }
     }
   };
 
@@ -390,25 +404,58 @@ function PostCard({ post, currentUser, currentUserNick, onToast }: PostCardProps
   useEffect(() => {
     const q = query(collection(db, 'posts', post.id, 'replies'), orderBy('createdAt', 'asc'));
     const unsub = onSnapshot(q, (snap) => {
-      setReplies(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ReplyData)));
+      setReplies(
+        snap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as ReplyData))
+          .filter(r => !r.deleted)
+      );
+    }, (err) => {
+      console.error("Firestore replies onSnapshot error:", err);
+      if (err.code === 'permission-denied' || err.message?.includes('permission')) {
+        handleFirestoreError(err, OperationType.LIST, `posts/${post.id}/replies`);
+      }
     });
     return unsub;
   }, [post.id]);
 
   const togglePin = async () => {
-    await updateDoc(doc(db, 'posts', post.id), { pinned: !post.pinned });
-    onToast(post.pinned ? 'DISMISSED PIN' : 'ARTICLE PINNED');
+    try {
+      await updateDoc(doc(db, 'posts', post.id), { pinned: !post.pinned });
+      onToast(post.pinned ? 'DISMISSED PIN' : 'ARTICLE PINNED');
+    } catch (e: any) {
+      if (e.code === 'permission-denied' || e.message?.includes('permission')) {
+        handleFirestoreError(e, OperationType.UPDATE, `posts/${post.id}`);
+      } else {
+        throw e;
+      }
+    }
   };
 
   const toggleFeatured = async () => {
-    await updateDoc(doc(db, 'posts', post.id), { featured: !post.featured });
-    onToast(post.featured ? 'REMOVED FROM SELECTION' : 'ADDED TO SELECTION');
+    try {
+      await updateDoc(doc(db, 'posts', post.id), { featured: !post.featured });
+      onToast(post.featured ? 'REMOVED FROM SELECTION' : 'ADDED TO SELECTION');
+    } catch (e: any) {
+      if (e.code === 'permission-denied' || e.message?.includes('permission')) {
+        handleFirestoreError(e, OperationType.UPDATE, `posts/${post.id}`);
+      } else {
+        throw e;
+      }
+    }
   };
 
   const deletePost = async () => {
     if (!confirm('ARCHIVE THIS CONTRIBUTION?')) return;
-    await updateDoc(doc(db, 'posts', post.id), { deleted: true, body: '[ CONTENT EXPUNGED ]', nick: 'DELETED USER' });
-    onToast('RECORD ARCHIVED');
+    try {
+      await updateDoc(doc(db, 'posts', post.id), { deleted: true, body: '[ CONTENT EXPUNGED ]', nick: 'DELETED USER' });
+      onToast('RECORD ARCHIVED');
+    } catch (e: any) {
+      if (e.code === 'permission-denied' || e.message?.includes('permission')) {
+        handleFirestoreError(e, OperationType.UPDATE, `posts/${post.id}`);
+      } else {
+        throw e;
+      }
+    }
   };
 
   const submitReply = async () => {
@@ -428,13 +475,23 @@ function PostCard({ post, currentUser, currentUserNick, onToast }: PostCardProps
       onToast('已發佈回覆');
     } catch (e: any) {
       onToast('回覆失敗: ' + e.message, 'error');
+      if (e.code === 'permission-denied' || e.message?.includes('permission')) {
+        handleFirestoreError(e, OperationType.CREATE, `posts/${post.id}/replies`);
+      }
     }
   };
 
   const deleteReply = async (rid: string) => {
     if (!confirm('ARCHIVE THIS RESPONSE?')) return;
-    await updateDoc(doc(db, 'posts', post.id, 'replies', rid), { deleted: true, body: '[ RESPONSE EXPUNGED ]', nick: 'DELETED USER' });
-    onToast('RESPONSE ARCHIVED');
+    try {
+      await updateDoc(doc(db, 'posts', post.id, 'replies', rid), { deleted: true, body: '[ RESPONSE EXPUNGED ]', nick: 'DELETED USER' });
+      onToast('RESPONSE ARCHIVED');
+    } catch (e: any) {
+      onToast('存檔失敗: ' + e.message, 'error');
+      if (e.code === 'permission-denied' || e.message?.includes('permission')) {
+        handleFirestoreError(e, OperationType.UPDATE, `posts/${post.id}/replies/${rid}`);
+      }
+    }
   };
 
   return (
