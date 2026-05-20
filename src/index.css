@@ -1,0 +1,139 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Noto Serif TC", serif;
+  --font-sans: "Noto Sans TC", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-paper: #ffffff;
+  --color-paper-dark: #f8fafc;
+  --color-paper-darker: #f1f5f9;
+  
+  --color-ink: #1e293b;
+  --color-ink-light: #475569;
+  --color-ink-muted: #94a3b8;
+  
+  --color-red: #ef4444;
+  --color-red-light: #fef2f2;
+  --color-red-mid: #fecaca;
+  
+  --color-green: #10b981;
+  --color-green-light: #ecfdf5;
+  --color-green-mid: #a7f3d0;
+  
+  --color-blue: #3b82f6;
+  --color-blue-light: #eff6ff;
+  --color-blue-mid: #bfdbfe;
+  
+  --color-gold: #f59e0b;
+  --color-gold-light: #fffbeb;
+  
+  --color-rule: #e2e8f0;
+
+  --color-accent: #f59e0b;
+  --color-accent-light: #fffbeb;
+  --color-admin-bg: #ecfdf5;
+  --color-admin-text: #047857;
+  --color-pin-bg: #fffbeb;
+  --color-pin-border: #fcd34d;
+  --color-feat-bg: #eff6ff;
+  --color-feat-border: #bfdbfe;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-paper text-ink;
+  }
+}
+
+@media print {
+  /* Force high-quality color reproduction */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+
+  body {
+    background-color: white !important;
+    color: #1a1612 !important;
+    font-size: 11pt !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Force display of elements that might be hidden by interactive states */
+  [class*="LeaveCard"] {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 2rem !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    display: block !important;
+  }
+
+  /* Force open the content in print */
+  [class*="motion-div"], [class*="AnimatePresence"] {
+    display: block !important;
+    height: auto !important;
+    opacity: 1 !important;
+  }
+
+  /* Layout grid for cards to match the 2-column style of the original HTML */
+  .print-grid-2 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0 !important;
+  }
+
+  /* Boundary lines per section */
+  .print-border { border: 1px solid #ddd !important; }
+  .print-border-b { border-bottom: 1px solid #ddd !important; }
+  .print-border-r { border-right: 1px solid #ddd !important; }
+
+  /* Fix background colors for rights and markers */
+  .print-bg-rights {
+    background-color: #fdf8ee !important;
+  }
+
+  .print-bg-gray {
+    background-color: #f9fafb !important;
+  }
+
+  /* Ensure headers are prominent */
+  h1, h2, h3, h4 {
+    color: #000 !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Column breaks */
+  .print-break-inside-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Hide UI elements */
+  .print\:hidden, nav, button:not([class*="LeaveCard"]), .tab-bar-sticky, .controls {
+    display: none !important;
+  }
+
+  /* Styling for the examples/children box to stand out in print */
+  .print-example-box {
+    background-color: #f7f4ef !important;
+    border-top: 1px solid #ccc !important;
+    padding: 1.5rem !important;
+    margin: 0 !important;
+    display: block !important;
+    color: #1a1612 !important;
+  }
+}
+

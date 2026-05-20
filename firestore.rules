@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.uid || request.auth.token.email == 'mtc.teachers.right@gmail.com');
+      
+      match /replies/{replyId} {
+      	allow read: if true;
+      	allow create: if request.auth != null;
+        allow update, delete: if request.auth != null && (request.auth.uid == resource.data.uid || request.auth.token.email == 'mtc.teachers.right@gmail.com');
+      }
+    }
+    
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

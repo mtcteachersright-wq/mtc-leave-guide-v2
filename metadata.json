@@ -1,0 +1,8 @@
+{
+  "name": "MTC 華語教師勞權電子手冊",
+  "description": "MTC Teachers Rights Digital Handbook. A critical archive of labor regulations, fiscal audit tools, and public discourse for educators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
