@@ -571,7 +571,7 @@ export default function LeaveGuide({ isPrintView = false, selectedLeaves = null 
           </li>
           <li>
             <strong>育嬰留職停薪：最長 2 年</strong>（子女滿 3 歲前）<br />
-            <span className="text-xs opacity-60">留停期間可續保勞健保；可申請育嬰津貼（投保薪資 60%，最長 6 個月）</span>
+            <span className="text-xs opacity-60">留停期間可續保勞健保；可申請育嬰津貼（前半年每月平均投保薪資60%+政府補助20%，可合併申請，最長 6 個月）</span>
           </li>
         </ul>
       ),
